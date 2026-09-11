@@ -1,7 +1,7 @@
 # TW1 Data Health Checkup - Remediation Plan (DRAFT, not yet enabled)
 
 Team session 2-4 5 | MASY1-GC 2100 Advanced Business Analytics | Case: TechPoint SaaS Solutions
-Status: proposal for Part 4. The matching script `tw1_data_cleaning.py` runs in dry-run mode only until the team approves this plan; then run it with `--apply`.
+Status: proposal for Part 4. The matching script `tw1_data_cleaning.py` runs in dry-run mode only until the team approves this plan; then run it with `--apply`. `tw1_raw_vs_clean_metrics.py` applies the same rules in memory to show Raw vs. Clean numbers side by side without writing a cleaned file.
 
 ## 1. What the audit found (from `TW1_Audit_Summary.md`)
 
@@ -21,7 +21,7 @@ Status: proposal for Part 4. The matching script `tw1_data_cleaning.py` runs in 
 | 12 | No cancellations recorded before 2022 although customers joined from 2020: pre-2022 churn history is missing or purged | window | Summary (consistency) |
 | 13 | Company_Name is `Company_<ID-1001>` for every row: an identifier, not a feature | 1 column | Summary (consistency) |
 
-Sanity check that ties issues 7 and 8 together: typical accounts pay about $50 per user per month (see `Consist_RevPerUser`). The whale implies $58,824 per user and the 50,000-user row implies $0.02 per user, so each is a single mistyped field about 1,000x off, not a real strategic account. Support_Tickets blanks are spread evenly across churn status (5.4% vs 4.9%) and industries (3.6% to 6.9%), so they can be treated as missing at random.
+Sanity check that ties issues 7 and 8 together: typical accounts pay about $50 per user per month (see `Consist_RevPerUser`). The whale implies $58,824 per user and the 50,000-user row implies $0.02 per user, so each is a single mistyped field about 1,000x off, not a real strategic account. Support_Tickets blanks are spread evenly across churn status (5.8% of literal Yes rows vs 4.9% of No rows, 2.0% of the 50 ambiguous rows) and industries (3.6% to 6.9%), so they can be treated as missing at random.
 
 ## 2. Top 3 critical errors and campaign impact (Part 4 draft)
 
@@ -43,7 +43,7 @@ Runner-up: Last_Login_Days_Ago as a whole (issues 6 + 11). Engagement recency is
 | R6 | Revenue >= $100k and Users >= 10k -> missing + flag; keep in a review list | Exclude from baselines and modelling until Sales confirms the records. The $/user ratio shows the whale's revenue (17 users) and the 50,000-user row's user count ($1,133 revenue) are the mistyped fields; a corrected value of about $1,000 and 23 users is plausible, but correcting requires source confirmation, so the default is to blank and flag. |
 | R7 | Blank Support_Tickets -> 0 + `Support_Tickets_Missing` flag | Assumption: no row = no ticket logged. Switch `SUPPORT_TICKET_IMPUTATION = "median"` if the team believes blanks are lost records. |
 | R8 | Keep Contract_Type `Unknown` as its own category + flag | 2% of rows; an explicit category avoids silent bias from dropping them. |
-| R9 | Drop Date_Cancelled before modelling; keep Churn_Year for reporting only | Leakage. Also drop Company_Name (identifier). Last_Login_Days_Ago should be re-extracted as of one snapshot date; until then set `DROP_LAST_LOGIN = True` or treat the field as unreliable. |
+| R9 | Drop Date_Cancelled and Company_Name from the modelling table; Churn_Year is written to a separate reporting sheet keyed by Customer_ID, never into the features | Leakage (Date_Cancelled and anything derived from it) and identifier. Customer_ID stays as a join key only. The Churn_Label_Flag records only that a label was recoded, not whether a date existed. Last_Login_Days_Ago should be re-extracted as of one snapshot date; until then set `DROP_LAST_LOGIN = True` or treat the field as unreliable. |
 | Display | Apply one number format to Monthly_Revenue in Excel | Cosmetic; no value change. |
 
 Expected result after cleaning: 2,500 unique customers, 6 industries, Churn_Label strictly Yes/No (491 Yes / 2,009 No), flag columns preserved so nothing is silently lost.
@@ -60,7 +60,7 @@ Expected result after cleaning: 2,500 unique customers, 6 industries, Churn_Labe
 
 **Data Quality Grade (draft): C.** The extract is usable and the core fields are numeric and mostly complete, but the target label is inconsistent, 10% of a key segment field is mis-cased, single-row anomalies distort every average, and the main engagement field is not measured at a consistent point in time; nothing can be modelled until the fixes above are applied and one field is re-extracted.
 
-**Churn observation:** cancellations rose from 145 in 2022 to 346 in 2023 (about 2.4x; 8.8% -> 14.7% of the active base), so the data supports the VP's concern, with the caveat that the extract contains no cancellations before 2022, so the 2022 base may already exclude earlier churners. Month-to-Month contracts churn at about 34% versus about 15% for 2-Year contracts, and Education shows the highest industry churn (about 24%).
+**Churn observation:** cancellations rose from 145 in 2022 to 346 in 2023 (about 2.4x; 8.8% -> 14.7% of the active base), so the data supports the VP's concern, with the caveat that the extract contains no cancellations before 2022, so the 2022 base may already exclude earlier churners. On the cleaned table, Month-to-Month contracts churn at about 33% versus about 13% for annual contracts, and Education shows the highest industry churn (about 23%); exact Raw and Clean values are in `TW1_Raw_vs_Clean_Metrics.xlsx`.
 
 **Data augmentation ideas (Part 5, Data Proximity Framework):**
 - Zero-party: onboarding survey on intended use case and success criteria; quarterly NPS / renewal-intent question.

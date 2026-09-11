@@ -30,9 +30,14 @@ Pipeline (in order)
                                  flag (assumption: blank = no ticket logged;
                                  alternative = median; set in RULES)
  R8  contract_unknown            keep 'Unknown' as its own category + flag
- R9  drop_leakage_columns        remove Date_Cancelled (and optionally
-                                 Last_Login_Days_Ago) from the modelling table
+ R9  drop_leakage_columns        remove Date_Cancelled, Company_Name (and optionally
+                                 Last_Login_Days_Ago) from the modelling table;
+                                 Churn_Year goes to a separate reporting sheet
  R10 write_outputs               cleaned xlsx/csv + change log
+
+The pipeline is also importable: clean_frame(df, drop_leakage=False) applies
+the rules in memory (no files written) so tw1_raw_vs_clean_metrics.py can
+compare raw and cleaned metrics side by side.
 
 Usage
 -----
@@ -69,7 +74,8 @@ SUPPORT_TICKET_IMPUTATION = "zero"      # "zero" | "median" | "leave"
 WHALE_REVENUE = 100_000                 # Monthly_Revenue at/above this is treated as an anomaly
 EXTREME_USERS = 10_000                  # Total_Users at/above this is treated as an anomaly
 DROP_LAST_LOGIN = False                 # set True if the team decides Last_Login_Days_Ago is also leakage
-LEAKAGE_COLUMNS = ["Date_Cancelled"]
+LEAKAGE_COLUMNS = ["Date_Cancelled"]         # outcome information, known only after churn
+IDENTIFIER_COLUMNS = ["Company_Name"]        # identifiers carry no signal; Customer_ID is kept as join key only
 
 NUMERIC_COLS = ["Total_Users", "Monthly_Revenue", "Support_Tickets", "Last_Login_Days_Ago"]
 
@@ -118,7 +124,9 @@ def r4_standardize_churn_label(df: pd.DataFrame, log: ChangeLog) -> pd.DataFrame
     # Numeric / unrecognised codes: resolve against the cancellation date.
     label[ambiguous & has_date] = "Yes"
     label[ambiguous & ~has_date] = "No"
-    flag = np.where(ambiguous, "recoded_from_" + df["Churn_Label"].astype(str) + np.where(has_date, "_date_present", "_no_date"), "")
+    # Flag records only that the label was recoded; it must NOT say whether a
+    # cancellation date existed, otherwise the flag itself leaks the outcome.
+    flag = np.where(ambiguous, "recoded_from_" + df["Churn_Label"].astype(str), "")
     log.add("R4", "recode non Yes/No Churn_Label values using Date_Cancelled", int(ambiguous.sum()),
             f"({int((ambiguous & has_date).sum())} -> Yes, {int((ambiguous & ~has_date).sum())} -> No)")
     return df.assign(Churn_Label=label, Churn_Label_Flag=flag)
@@ -167,19 +175,34 @@ def r8_contract_unknown(df: pd.DataFrame, log: ChangeLog) -> pd.DataFrame:
     return df.assign(Contract_Type_Unknown=unk.astype(int))
 
 
-def r9_drop_leakage_columns(df: pd.DataFrame, log: ChangeLog) -> pd.DataFrame:
-    cols = list(LEAKAGE_COLUMNS) + (["Last_Login_Days_Ago"] if DROP_LAST_LOGIN else [])
-    # Preserve the churn year as a label-side attribute before dropping the date.
-    out = df.assign(Churn_Year=df["Date_Cancelled"].dt.year) if "Date_Cancelled" in df else df.copy()
-    log.add("R9", f"drop leakage columns {cols} (Churn_Year retained for reporting only)", len(out))
-    return out.drop(columns=[c for c in cols if c in out.columns])
+def r9_drop_leakage_columns(df: pd.DataFrame, log: ChangeLog) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Return (modelling_table, reporting_frame).
+
+    The modelling table must contain nothing derived from the outcome or from
+    the customer's identity: Date_Cancelled (direct leak), Churn_Year (derived
+    from Date_Cancelled), and Company_Name (identifier) are removed. Customer_ID
+    stays only as a join key and must be excluded from model features.
+    Churn_Year is written to a separate reporting frame keyed by Customer_ID.
+    """
+    cols = list(LEAKAGE_COLUMNS) + list(IDENTIFIER_COLUMNS) + (["Last_Login_Days_Ago"] if DROP_LAST_LOGIN else [])
+    reporting = pd.DataFrame(
+        {
+            "Customer_ID": df["Customer_ID"],
+            "Churn_Label": df["Churn_Label"],
+            "Date_Cancelled": df["Date_Cancelled"],
+            "Churn_Year": df["Date_Cancelled"].dt.year,
+        }
+    )
+    present = [c for c in cols if c in df.columns]
+    log.add("R9", f"drop leakage/identifier columns {present} from the modelling table (Churn_Year kept in a separate reporting frame)", len(df))
+    return df.drop(columns=present), reporting
 
 
-# --------------------------------------------------------------------------- #
-# Driver
-# --------------------------------------------------------------------------- #
-def run(input_path: Path, output_dir: Path, apply: bool) -> None:
-    df = pd.read_excel(input_path)
+def clean_frame(df: pd.DataFrame, drop_leakage: bool = True) -> tuple[pd.DataFrame, ChangeLog, dict[str, pd.DataFrame]]:
+    """Apply the enabled rules to a DataFrame in memory and return
+    (cleaned_df, change_log, review_frames). Writes nothing.
+    drop_leakage=False keeps Date_Cancelled so reporting scripts can
+    compute churn-year metrics on the cleaned table."""
     log = ChangeLog()
     log.add("R0", "rows loaded", len(df))
     review_frames: dict[str, pd.DataFrame] = {}
@@ -200,10 +223,15 @@ def run(input_path: Path, output_dir: Path, apply: bool) -> None:
         df = r7_impute_support_tickets(df, log)
     if RULES["R8_contract_unknown"]:
         df = r8_contract_unknown(df, log)
-    if RULES["R9_drop_leakage_columns"]:
-        df = r9_drop_leakage_columns(df, log)
+    if RULES["R9_drop_leakage_columns"] and drop_leakage:
+        df, review_frames["Reporting_ChurnDates"] = r9_drop_leakage_columns(df, log)
 
     log.add("R10", "rows in cleaned table", len(df), f"columns: {len(df.columns)}")
+    return df, log, review_frames
+
+
+def run(input_path: Path, output_dir: Path, apply: bool) -> None:
+    df, log, review_frames = clean_frame(pd.read_excel(input_path))
 
     if not apply:
         print("\nDRY RUN - nothing written. Re-run with --apply once the team has approved the Part 4 strategy.")
