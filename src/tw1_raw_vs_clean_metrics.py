@@ -20,7 +20,7 @@ and show each number under two definitions side by side:
           Date_Cancelled is kept here (rule R9 is for the modelling table only)
           so churn-by-year can be computed on the cleaned customers.
 
-Outputs (next to the input file unless --out is given)
+Outputs (outputs/ unless --out is given)
 -------
   TW1_Raw_vs_Clean_Metrics.xlsx
       Metrics              headline numbers, one row per metric, Raw | Clean | note
@@ -42,7 +42,8 @@ Outputs (next to the input file unless --out is given)
 
 Usage
 -----
-    python tw1_raw_vs_clean_metrics.py "B2B SaaS Churn Data.xlsx" [--out DIR]
+    python src/tw1_raw_vs_clean_metrics.py [input.xlsx] [--out DIR]     # from the project root
+Defaults: input data/raw/B2B SaaS Churn Data.xlsx, outputs to outputs/.
 
 Dependencies: pandas, openpyxl; imports clean_frame from tw1_data_cleaning.py
 """
@@ -61,6 +62,11 @@ from tw1_data_cleaning import RULES, clean_frame  # noqa: E402
 YEARS = (2022, 2023)
 WHALE_REVENUE = 100_000
 EXTREME_USERS = 10_000
+
+# Project layout: <root>/src/<this file>, <root>/data/raw/, <root>/outputs/
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_INPUT = PROJECT_ROOT / "data" / "raw" / "B2B SaaS Churn Data.xlsx"
+DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "outputs"
 
 
 # --------------------------------------------------------------------------- #
@@ -373,13 +379,13 @@ def to_markdown_table(df: pd.DataFrame) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("input", nargs="?", default="B2B SaaS Churn Data.xlsx")
-    ap.add_argument("--out", default=None)
+    ap.add_argument("input", nargs="?", default=str(DEFAULT_INPUT), help="raw Excel extract (default: data/raw/)")
+    ap.add_argument("--out", default=None, help="output directory (default: outputs/)")
     args = ap.parse_args()
     inp = Path(args.input)
     if not inp.exists():
         sys.exit(f"Input file not found: {inp}")
-    out_dir = Path(args.out) if args.out else inp.parent
+    out_dir = Path(args.out) if args.out else DEFAULT_OUTPUT_DIR
 
     df = pd.read_excel(inp)
     raw = raw_view(df)

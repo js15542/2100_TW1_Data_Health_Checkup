@@ -1,9 +1,9 @@
 # TW1 Data Health Checkup - Remediation Plan (DRAFT, not yet enabled)
 
 Team session 2-4 5 | MASY1-GC 2100 Advanced Business Analytics | Case: TechPoint SaaS Solutions
-Status: proposal for Part 4. The matching script `tw1_data_cleaning.py` runs in dry-run mode only until the team approves this plan; then run it with `--apply`. `tw1_raw_vs_clean_metrics.py` applies the same rules in memory to show Raw vs. Clean numbers side by side without writing a cleaned file.
+Status: proposal for Part 4. The matching script `src/tw1_data_cleaning.py` runs in dry-run mode only until the team approves this plan; then run it with `--apply`. `src/tw1_raw_vs_clean_metrics.py` applies the same rules in memory to show Raw vs. Clean numbers side by side without writing a cleaned file.
 
-## 1. What the audit found (from `TW1_Audit_Summary.md`)
+## 1. What the audit found (from `outputs/TW1_Audit_Summary.md`)
 
 | # | Issue | Size | Where |
 |---|-------|------|-------|
@@ -31,7 +31,7 @@ Sanity check that ties issues 7 and 8 together: typical accounts pay about $50 p
 
 Runner-up: Last_Login_Days_Ago as a whole (issues 6 + 11). Engagement recency is the most actionable early-warning signal for a retention campaign, but 50 rows are negative and 470 cancelled customers show logins after they left, so the field is not measured at a consistent snapshot date. Used as-is it would rank departed accounts as "recently active" and push genuine at-risk accounts down the outreach list. The fix is upstream (re-extract the field as of one snapshot date), not in this table.
 
-## 3. Cleaning strategy (rule by rule, mirrors `tw1_data_cleaning.py`)
+## 3. Cleaning strategy (rule by rule, mirrors `src/tw1_data_cleaning.py`)
 
 | Rule | Action | Rationale / alternative |
 |------|--------|-------------------------|
@@ -60,7 +60,7 @@ Expected result after cleaning: 2,500 unique customers, 6 industries, Churn_Labe
 
 **Data Quality Grade (draft): C.** The extract is usable and the core fields are numeric and mostly complete, but the target label is inconsistent, 10% of a key segment field is mis-cased, single-row anomalies distort every average, and the main engagement field is not measured at a consistent point in time; nothing can be modelled until the fixes above are applied and one field is re-extracted.
 
-**Churn observation:** cancellations rose from 145 in 2022 to 346 in 2023 (about 2.4x; 8.8% -> 14.7% of the active base), so the data supports the VP's concern, with the caveat that the extract contains no cancellations before 2022, so the 2022 base may already exclude earlier churners. On the cleaned table, Month-to-Month contracts churn at about 33% versus about 13% for annual contracts, and Education shows the highest industry churn (about 23%); exact Raw and Clean values are in `TW1_Raw_vs_Clean_Metrics.xlsx`.
+**Churn observation:** cancellations rose from 145 in 2022 to 346 in 2023 (about 2.4x; 8.8% -> 14.7% of the active base), so the data supports the VP's concern, with the caveat that the extract contains no cancellations before 2022, so the 2022 base may already exclude earlier churners. On the cleaned table, Month-to-Month contracts churn at about 33% versus about 13% for annual contracts, and Education shows the highest industry churn (about 23%); exact Raw and Clean values are in `outputs/TW1_Raw_vs_Clean_Metrics.xlsx`.
 
 **Data augmentation ideas (Part 5, Data Proximity Framework):**
 - Zero-party: onboarding survey on intended use case and success criteria; quarterly NPS / renewal-intent question.

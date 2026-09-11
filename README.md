@@ -1,33 +1,47 @@
-# TW1 Data Health Checkup - working files
+# TW1 Data Health Checkup
 
-Team session 2-4 5 | MASY1-GC 2100 | Raw data: `B2B SaaS Churn Data.xlsx` (do not edit the raw file)
+MASY1-GC 2100 Advanced Business Analytics | Team session 2-4 5 | Case: TechPoint SaaS Solutions
 
-## Where things live
+Part 1 audit of `B2B SaaS Churn Data.xlsx`, plus the Raw vs. Clean numbers Parts 2-5 cite. Teammates can read everything in `outputs/` without running any code.
 
-- **Code project (run here):** `D:\0Coding\Python\1\2026Fall\2100_TW1_Data_Health_Checkup\`
-  scripts, raw data copy, requirements, and generated outputs
-- **Course folder (docs and results only):** `OneDrive\0graduate\2026Fall\MASY1-GC_2100_Advanced Business Analytics\2100_homework\Module 1\Session 2\`
-  original data and assignment notes only
+## Layout
 
-| File | Purpose | Status |
-|------|---------|--------|
-| `tw1_data_health_audit.py` | Part 1 audit (read-only) + Part 2/3 supporting numbers | done, re-runnable |
-| `TW1_Audit_Findings.xlsx` | Output of the audit: Summary sheet + one sheet per check with the offending rows | generated |
-| `TW1_Audit_Summary.md` | Plain-English audit results to paste into the memo | generated |
-| `TW1_Remediation_Plan.md` | Part 4 proposal, cleaning rules, open decisions, draft inputs for Parts 2/3/5 | draft for team review |
-| `tw1_data_cleaning.py` | Cleaning pipeline; dry-run by default, `--apply` writes cleaned data | NOT enabled until the team approves Part 4 |
-| `tw1_raw_vs_clean_metrics.py` | Parts 2-5 numbers with Raw and Clean side by side; applies the cleaning rules in memory only | done, re-runnable |
-| `TW1_Raw_vs_Clean_Metrics.xlsx` / `.md` | Output of the above: Metrics, Churn_By_Year, Churn_By_Industry, Churn_By_Contract, Industry_x_Contract (rate + counts), Churn_By_JoinYear, Revenue/Users baselines, Engagement, Label_Reconciliation, Audit_Issue_Counts, Whale_Impact, Leakage_Diagnostic, Definitions | generated |
-| `requirements.txt` | pandas, openpyxl | |
+```
+.
+├── README.md
+├── requirements.txt
+├── data/
+│   ├── raw/       B2B SaaS Churn Data.xlsx               raw extract, never edited
+│   └── cleaned/   B2B_SaaS_Churn_Data_CLEANED.xlsx/.csv  written by tw1_data_cleaning.py --apply
+├── src/
+│   ├── tw1_data_health_audit.py       Part 1 audit (read-only) + Part 2/3 support numbers
+│   ├── tw1_data_cleaning.py           cleaning rules R1-R9; dry-run by default
+│   └── tw1_raw_vs_clean_metrics.py    Parts 2-5 numbers, Raw and Clean side by side
+├── outputs/
+│   ├── TW1_Audit_Findings.xlsx        one sheet per check with the offending rows
+│   ├── TW1_Audit_Summary.md           audit results in plain English
+│   ├── TW1_Raw_vs_Clean_Metrics.xlsx  Metrics, Churn_By_*, Label_Reconciliation, Audit_Issue_Counts,
+│   │                                  Whale_Impact, Leakage_Diagnostic, Definitions
+│   └── TW1_Raw_vs_Clean_Metrics.md    same tables as Markdown
+└── docs/
+    └── TW1_Remediation_Plan.md        Part 4 proposal, rule rationale, open decisions, Part 5 draft ideas
+```
 
-## Run (from the code project folder, inside its virtual environment)
+## Run (from the project root, inside the virtual environment)
 
 ```bash
 pip install -r requirements.txt
-python tw1_data_health_audit.py "B2B SaaS Churn Data.xlsx"          # rewrites TW1_Audit_Findings.xlsx and TW1_Audit_Summary.md here
-python tw1_raw_vs_clean_metrics.py "B2B SaaS Churn Data.xlsx"       # writes TW1_Raw_vs_Clean_Metrics.xlsx / .md
-python tw1_data_cleaning.py "B2B SaaS Churn Data.xlsx"              # dry run: prints what would change, writes nothing
-python tw1_data_cleaning.py "B2B SaaS Churn Data.xlsx" --apply      # writes B2B_SaaS_Churn_Data_CLEANED.xlsx/.csv
+python src/tw1_data_health_audit.py          # rewrites outputs/TW1_Audit_*
+python src/tw1_raw_vs_clean_metrics.py       # rewrites outputs/TW1_Raw_vs_Clean_Metrics.*
+python src/tw1_data_cleaning.py              # dry run: prints what would change, writes nothing
+python src/tw1_data_cleaning.py --apply      # writes data/cleaned/
 ```
 
-All scripts take the input path as the first argument; outputs go next to the input unless a second argument / `--out` is given. Generated result files are committed here; the course folder keeps only the assignment notes.
+Every script accepts an explicit input path as the first argument and `--out DIR` (or a second positional argument for the audit script) to override the default locations.
+
+## Reading guide for teammates
+
+- Business conclusions (churn trend, segments): use the **Clean** columns in `outputs/TW1_Raw_vs_Clean_Metrics.xlsx`.
+- Data-quality statements and outlier impact: use the **Raw** columns and the `Whale_Impact` / `Audit_Issue_Counts` sheets.
+- Row-level evidence for any issue: `outputs/TW1_Audit_Findings.xlsx`.
+- Cleaning rules and the decisions still open for the team: `docs/TW1_Remediation_Plan.md`.

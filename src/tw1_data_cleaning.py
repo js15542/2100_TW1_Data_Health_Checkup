@@ -41,8 +41,9 @@ compare raw and cleaned metrics side by side.
 
 Usage
 -----
-    python tw1_data_cleaning.py "B2B SaaS Churn Data.xlsx"            # dry run, no files written
-    python tw1_data_cleaning.py "B2B SaaS Churn Data.xlsx" --apply    # writes cleaned outputs
+    python src/tw1_data_cleaning.py            # dry run, no files written (from the project root)
+    python src/tw1_data_cleaning.py --apply    # writes data/cleaned/B2B_SaaS_Churn_Data_CLEANED.xlsx / .csv
+Defaults: input data/raw/B2B SaaS Churn Data.xlsx; pass a path and/or --out to override.
 
 Dependencies: pandas, openpyxl
 """
@@ -78,6 +79,11 @@ LEAKAGE_COLUMNS = ["Date_Cancelled"]         # outcome information, known only a
 IDENTIFIER_COLUMNS = ["Company_Name"]        # identifiers carry no signal; Customer_ID is kept as join key only
 
 NUMERIC_COLS = ["Total_Users", "Monthly_Revenue", "Support_Tickets", "Last_Login_Days_Ago"]
+
+# Project layout: <root>/src/<this file>, <root>/data/raw/, <root>/data/cleaned/
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_INPUT = PROJECT_ROOT / "data" / "raw" / "B2B SaaS Churn Data.xlsx"
+DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "data" / "cleaned"
 
 
 class ChangeLog:
@@ -250,14 +256,14 @@ def run(input_path: Path, output_dir: Path, apply: bool) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("input", nargs="?", default="B2B SaaS Churn Data.xlsx", help="raw Excel extract")
-    ap.add_argument("--out", default=None, help="output directory (default: next to the input file)")
+    ap.add_argument("input", nargs="?", default=str(DEFAULT_INPUT), help="raw Excel extract (default: data/raw/)")
+    ap.add_argument("--out", default=None, help="output directory (default: data/cleaned/)")
     ap.add_argument("--apply", action="store_true", help="actually write the cleaned files (default is dry run)")
     args = ap.parse_args()
     inp = Path(args.input)
     if not inp.exists():
         sys.exit(f"Input file not found: {inp}")
-    run(inp, Path(args.out) if args.out else inp.parent, args.apply)
+    run(inp, Path(args.out) if args.out else DEFAULT_OUTPUT_DIR, args.apply)
 
 
 if __name__ == "__main__":
