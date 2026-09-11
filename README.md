@@ -9,7 +9,6 @@ Part 1 audit of `B2B SaaS Churn Data.xlsx`, plus the Raw vs. Clean numbers Parts
 ```
 .
 ├── README.md
-├── requirements.txt
 ├── data/
 │   ├── raw/       B2B SaaS Churn Data.xlsx               raw extract, never edited
 │   └── cleaned/   B2B_SaaS_Churn_Data_CLEANED.xlsx/.csv  written by tw1_data_cleaning.py --apply
@@ -27,10 +26,9 @@ Part 1 audit of `B2B SaaS Churn Data.xlsx`, plus the Raw vs. Clean numbers Parts
     └── TW1_Remediation_Plan.md        Part 4 proposal, rule rationale, open decisions, Part 5 draft ideas
 ```
 
-## Run (from the project root, inside the virtual environment)
+## Run (from the project root, inside the virtual environment; needs pandas and openpyxl)
 
 ```bash
-pip install -r requirements.txt
 python src/tw1_data_health_audit.py          # rewrites outputs/TW1_Audit_*
 python src/tw1_raw_vs_clean_metrics.py       # rewrites outputs/TW1_Raw_vs_Clean_Metrics.*
 python src/tw1_data_cleaning.py              # dry run: prints what would change, writes nothing
